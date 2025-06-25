@@ -100,5 +100,26 @@ router.delete(
   deleteAttachment
 );
 
+// // Get all tasks for a specific project (excluding soft-deleted ones)
+// router.get('/project/:projectId', authenticateUser, async (req, res) => {
+//   try {
+//     const { projectId } = req.params;
+
+//     if (!projectId) {
+//       return res.status(400).json({ error: "Project ID is required" });
+//     }
+
+//     const tasks = await Task.find({ project: projectId, isDeleted: false })
+//       .populate("assignedTo", "name email")
+//       .lean({ virtuals: true }); // ✅ this is the key
+
+//     res.status(200).json({ tasks });
+//   } catch (error) {
+//     console.error("Error fetching tasks:", error);
+//     res.status(500).json({ error: "Something went wrong", details: error.message });
+//   }
+// });
+//not needed this 
+
 
 module.exports = router;

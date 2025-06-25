@@ -64,9 +64,13 @@ exports.getMyOrganizationProjects = async (req, res) => {
 
     if (req.user.role === "admin") {
       organization = await Organization.findOne({ admin: req.user.id });
-    } else if (req.user.role === "projectManager") {
+    } else if (req.user.role === "projectmanager") {
       organization = await Organization.findOne({ members: req.user.id }); // or however you're storing PMs
     }
+    else if (req.user.role === "billingengineer") {
+      organization = await Organization.findOne({ members: req.user.id }); // or however you're storing PMs
+    }
+
 
     if (!organization) {
       return res.status(404).json({ message: "Organization not found" });
@@ -365,3 +369,32 @@ exports.updateProjectManager =  async ( req, res) => {
     res.status(500).json({ error: 'Internal server error' });
   }
    };
+
+
+   exports.getProjectsByLoggedInUserOrg = async (req, res) => {
+  try {
+    const orgId = req.user.organization?._id;
+
+    if (!orgId) {
+      return res.status(404).json({ message: "User not linked to any organization" });
+    }
+
+    const projects = await Project.find({ organization: orgId })
+      .populate("tasks")
+      .populate({
+    path: "boq",
+    populate: {
+      path: "sections"
+    }
+    })
+      .populate("siteSupervisor", "name email");
+
+    return res.status(200).json({ projects });
+  } catch (error) {
+    console.error("❌ Failed to fetch projects:", error);
+    return res.status(500).json({ message: "Server error", error: error.message });
+  }
+};
+
+
+// ⚠️ Use only for dev/debugging

@@ -9,7 +9,8 @@ const {
   generateBOQReport,
   generateProgressReport,
   getMyOrganizationProjects, 
-  getProjectDetails
+  getProjectDetails,
+  getProjectsByLoggedInUserOrg
 } = require("../controllers/projectController");
 const Project = require("../models/Project");
 const User  =  require("../models/User")
@@ -21,12 +22,23 @@ const router = express.Router();
 
 // ✅ Only Admin can create projects & assign Project Managers
 router.post("/create", authenticateUser, authorizeRoles("admin"), ensureOrganizationExists, createProject);
+
 router.get(
     "/my-organization-projects",
     authenticateUser,
-    authorizeRoles("admin", "projectmanager"),
+    authorizeRoles("admin", "projectmanager" , "billingengineer"),
     getMyOrganizationProjects
   );
+
+
+//get my organisation projects without fetching organsation 
+router.get(
+  "/entire-organization-projects",
+  authenticateUser,
+  authorizeRoles("admin", "projectmanager", "billingengineer", "sitesupervisor"),
+  getProjectsByLoggedInUserOrg
+);
+
   
 router.post("/:projectId/assign-project-manager", authenticateUser, authorizeRoles("admin"), assignProjectManager);
 
@@ -62,7 +74,7 @@ router.get('/my-projects', authenticateUser, authorizeRoles('projectmanager'), a
 });
 
 // ✅ Admin, Supervisor & Client can generate reports
-router.get("/:projectId", authenticateUser, authorizeRoles("admin" , "projectmanager" , "sitesupervisor") , getProjectDetails);
+router.get("/:projectId", authenticateUser, authorizeRoles("admin" , "projectmanager" , "sitesupervisor" , "billingengineer") , getProjectDetails);
 
 
 //debug route 
@@ -124,6 +136,26 @@ router.post('/:projectId/fix-users', async (req, res) => {
     res.status(500).json({ error: "Internal Server Error", details: err.message });
   }
 });
+
+
+
+router.post("/fix-user-org", async (req, res) => {
+  const { userEmail, orgId } = req.body;
+
+  try {
+    const user = await User.findOne({ email: userEmail });
+    if (!user) return res.status(404).json({ message: "User not found" });
+
+    user.organization = orgId;
+    await user.save();
+
+    res.json({ message: "✅ User organization updated", user });
+  } catch (error) {
+    console.error("Error updating user organization:", error);
+    res.status(500).json({ message: "Server error", error: error.message });
+  }
+});
+
 
 
 module.exports = router;

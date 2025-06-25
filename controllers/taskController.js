@@ -17,7 +17,8 @@ exports.createTask = async (req, res) => {
       expectedCost,
       boqQuantityTarget, // ✅ ADD THIS
       unitOfMeasure,
-      attachments
+      attachments ,
+      boqReference // ✅ Add this
     } = req.body;
 
     const projectId = req.params.projectId || req.body.projectId;
@@ -83,10 +84,12 @@ exports.createTask = async (req, res) => {
   expectedEndDate,
   expectedCost,
   unitOfMeasure,
-  boqQuantityTarget, // ✅ ADD THIS LINE
+  boqQuantityTarget,
+  boqReference, // ✅ Include here
   project: projectId,
   attachments: attachments || []
 });
+
 
 
     // Push task to project
@@ -135,6 +138,7 @@ exports.editTask = async (req, res) => {
     if (expectedCost !== undefined) task.expectedCost = expectedCost;
     if (unitOfMeasure) task.unitOfMeasure = unitOfMeasure;
     if (status) task.status = status;
+    if (req.body.boqReference) task.boqReference = req.body.boqReference;
     if (boqQuantityTarget !== undefined) task.boqQuantityTarget = boqQuantityTarget;
     if (assignedTo && Array.isArray(assignedTo)) task.assignedTo = assignedTo;
 
@@ -213,6 +217,7 @@ exports.getTaskById = async (req, res) => {
 exports.addSubtask = async (req, res) => {
   try {
     const { parentTaskId } = req.params;
+
     const {
       title,
       description,
@@ -220,9 +225,10 @@ exports.addSubtask = async (req, res) => {
       status,
       expectedCost,
       unitOfMeasure,
-      boqQuantityTarget, // ✅ ADD THIS
+      boqQuantityTarget,
       attachments,
-      durationInDays = 0 ,// Default to 0 if not provided,// Optional, can be calculated if not provided 
+      durationInDays = 0,
+      boqReference // ✅ NEW: Destructure boqReference from request body
     } = req.body;
 
     const currentUser = req.user;
@@ -236,7 +242,7 @@ exports.addSubtask = async (req, res) => {
     const project = await Project.findById(parentTask.project).populate(["assignedUsers", "projectManager", "siteSupervisor"]);
     if (!project) return res.status(404).json({ error: "Project not found" });
 
-    // Validate assigned users
+    // ✅ Validate assigned users
     const validUserIds = [
       ...project.assignedUsers.map(u => u._id?.toString?.() || u.toString()),
       project.projectManager?._id?.toString?.(),
@@ -252,33 +258,37 @@ exports.addSubtask = async (req, res) => {
     const expectedEndDate = new Date(startDate);
     expectedEndDate.setDate(startDate.getDate() + parseInt(durationInDays || 0));
 
+    // ✅ Build subtask data
     const subtaskData = {
       title,
       description: description || "",
       assignedTo: assignedTo || [],
-      status: "Not Started",
+      status: status || "Not Started",
       startDate,
       expectedEndDate,
-      boqQuantityTarget: boqQuantityTarget || 0, // ✅ ADD THIS
+      boqQuantityTarget: boqQuantityTarget || 0,
       durationInDays: parseInt(durationInDays) || 0,
-      unitOfMeasure: unitOfMeasure || "nos", // Default to 'nos' if not provided
+      unitOfMeasure: unitOfMeasure || "nos",
       attachments: attachments || [],
       project: project._id,
       parentTask: parentTaskId
     };
 
+    // ✅ Add optional fields
     if (expectedCost !== undefined) subtaskData.expectedCost = expectedCost;
     if (unitOfMeasure) subtaskData.unitOfMeasure = unitOfMeasure;
     if (attachments) subtaskData.attachments = attachments;
+    if (boqReference) subtaskData.boqReference = boqReference; // ✅ NEW: Save boqReference if provided
 
+    // ✅ Create subtask
     const subtask = await Task.create(subtaskData);
 
-    // Optional: Add subtask ID to parent task's 'subtasks' array
+    // Optional: link subtask ID to parent task
     parentTask.subtasks = parentTask.subtasks || [];
     parentTask.subtasks.push(subtask._id);
     await parentTask.save();
 
-    // Notify assigned users
+    // ✅ Send email notification
     for (const userId of assignedTo || []) {
       const user = await User.findById(userId);
       if (user?.email) {
@@ -297,6 +307,7 @@ exports.addSubtask = async (req, res) => {
     res.status(500).json({ error: "Failed to create subtask", details: error.message });
   }
 };
+
 
 
 // Upload attachments to Cloudinary

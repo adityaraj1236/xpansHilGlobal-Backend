@@ -111,12 +111,19 @@ ProjectSchema.virtual('purchaseOrders' , {
   localField: '_id',
   foreignField: 'project'
 }) ; 
-
-ProjectSchema.virtual("boqEntries", {
-  ref: "BOQEntry",
+ProjectSchema.virtual("boq", {
+  ref: "BOQ",
   localField: "_id",
-  foreignField: "projectId"
+  foreignField: "projectId",
+  justOne: true, // Because one project has one BOQ
 });
+
+
+// ProjectSchema.virtual("boqEntries", {
+//   ref: "BOQEntry",
+//   localField: "_id",
+//   foreignField: "projectId"
+// });
 
 ProjectSchema.set('toJSON' , {virtuals: true});
 ProjectSchema.set('toObject' , {virtuals: true});

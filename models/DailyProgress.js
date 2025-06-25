@@ -3,7 +3,7 @@ const mongoose = require('mongoose');
 const DailyProgressSchema = new mongoose.Schema({
   date: { type: Date, default: Date.now },
 
-  precentageCompleted: {
+  percentageCompleted: {
     type: Number,
     min: 0,
     max: 100,
@@ -49,6 +49,6 @@ const DailyProgressSchema = new mongoose.Schema({
     required: true
   }
 
-}, { _id: false });
+}, { _id: false } , { timestamps: true });
 
 module.exports = DailyProgressSchema;

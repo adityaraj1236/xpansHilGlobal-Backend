@@ -45,6 +45,10 @@ const TaskSchema = new mongoose.Schema({
     required: true,
     enum: ['m³', 'm²', 'kg', 'litre', 'ton', 'ft²', 'ft³', 'nos', 'custom' ,'m' , 'site']
   },
+  boqReference: {
+    type: mongoose.Schema.Types.Mixed,
+    default: null
+  },
 
   // Attachments via Cloudinary
   attachments: [AttachmentSchema],
@@ -78,9 +82,12 @@ const TaskSchema = new mongoose.Schema({
 
 // Virtuals
 TaskSchema.virtual('currentCompletion').get(function () {
-  if (!this.dailyProgress || this.dailyProgress.length === 0) return 0;
-  return this.dailyProgress[this.dailyProgress.length - 1].percentageCompleted;
+  const totalDone = this.dailyProgress?.reduce((sum, log) => sum + log.boqQuantityDone, 0) || 0;
+  const target = this.boqQuantityTarget || 0;
+  if (target === 0) return 0;
+  return parseFloat(((totalDone / target) * 100).toFixed(2));
 });
+
 
 TaskSchema.virtual('totalBoqDone').get(function () {
   return this.dailyProgress.reduce((sum, log) => sum + log.boqQuantityDone, 0);

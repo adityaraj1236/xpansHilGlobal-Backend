@@ -22,7 +22,7 @@ router.post(
 router.get(
   "/:taskId",
   authenticateUser,
-  authorizeRoles("admin", "projectmanager", "sitesupervisor"),
+  authorizeRoles("admin", "projectmanager"),
   getProgressForTask
 );
 

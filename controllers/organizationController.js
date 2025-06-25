@@ -44,20 +44,27 @@ const createOrganization = async (req, res) => {
 };
 //getOrganisaion
 const getOrganizationByAdmin = async (req, res) => {
-    try {
-      const adminId = req.user.id; // Get from JWT middleware
-      const organization = await Organization.findOne({ admin: adminId });
-  
-      if (!organization) {
-        return res.status(404).json({ message: "Organization not found" });
-      }
-  
-      res.status(200).json({ organization });
-    } catch (error) {
-      console.error("Error fetching organization:", error);
-      res.status(500).json({ message: "Server error", error: error.message });
+  try {
+    const userId = req.user._id;
+
+    const organization = await Organization.findOne({
+      $or: [
+        { admin: userId },
+        { members: userId }, // Include PMs, billing engineers, etc.
+      ],
+    });
+
+    if (!organization) {
+      return res.status(404).json({ message: "Organization not found" });
     }
-  };
+
+    res.status(200).json({ organization });
+  } catch (error) {
+    console.error("Error fetching organization:", error);
+    res.status(500).json({ message: "Server error", error: error.message });
+  }
+};
+
 // In organizationController.js
 const updateOrganization = async (req, res) => {
     try {

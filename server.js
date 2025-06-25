@@ -14,7 +14,7 @@ const connectDB = require("./config/db");
 const authRoutes = require("./routes/authRoutes");
 const organizationRoutes = require("./routes/organizationRoutes");
 const inviteRoutes = require("./routes/inviteRoutes");
-const attendanceRoutes = require("./routes/attendanceRoutes");
+// const attendanceRoutes = require("./routes/attendanceRoutes");
 const workerRoutes = require("./routes/workers");
 const inventoryRoutes = require("./routes/inventory");
 const purchaseOrderRoutes = require("./routes/purchaseOrders");
@@ -22,6 +22,7 @@ const purchaseRequestRoutes = require("./routes/purchaseRequestRoutes");
 const boqUploadRoutes = require('./routes/boqUploadRoutes');
 const userRoutes = require('./routes/userRoutes');
 const dailyProgressRoutes = require('./routes/dailyProgressRoutes');
+const employeeRoutes =  require('./routes/EmployeeManagementRoutes/employeeRoutes')
 
 dotenv.config();
 connectDB();
@@ -57,14 +58,18 @@ app.use(cors({
 app.use(helmet());
 app.use(mongoSanitize());
 app.use(xss());
-const limiter = rateLimit({ windowMs: 15 * 60 * 1000, max: 100 });
+const limiter = rateLimit({
+  windowMs: 15 * 60 * 1000,
+  max: process.env.NODE_ENV === "development" ? 1000 : 100, // higher for dev
+  message: "Too many requests, please try again later.",
+});
 app.use("/api", limiter);
 
 // Routes
 app.use("/api/auth", authRoutes);
 app.use("/api/projects", require("./routes/projectRoutes"));
 app.use("/api/tasks", require("./routes/taskRoutes"));
-app.use("/api/attendance", attendanceRoutes);
+// app.use("/api/attendance", attendanceRoutes);
 app.use("/api/organizations", organizationRoutes);
 app.use("/api/invites", inviteRoutes);
 app.use("/api/workers", workerRoutes);
@@ -73,6 +78,7 @@ app.use("/api/purchase-orders", purchaseOrderRoutes);
 app.use("/api/purchaseOrder-request", purchaseRequestRoutes);
 app.use('/api/boq', boqUploadRoutes);
 app.use('/api/daily-progress' ,dailyProgressRoutes); 
+app.use('/api/employees' , employeeRoutes)
 // ✅ Mount it under your base API path
 app.use('/api/users', userRoutes);
 

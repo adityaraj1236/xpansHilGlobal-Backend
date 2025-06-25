@@ -6,7 +6,7 @@ const router = express.Router();
 
 // ✅ Only Admin can create an organization
 router.post("/create", authenticateUser, authorizeRoles("admin"), createOrganization);
-router.get("/my-organization", authenticateUser, getOrganizationByAdmin); // ✅ This route
+router.get("/my-organization", authenticateUser, authorizeRoles("admin" , "projectmanager" , "billingengineer") , getOrganizationByAdmin); // ✅ This route
 router.put("/update", authenticateUser, authorizeRoles("admin"), updateOrganization);
 
 module.exports = router;

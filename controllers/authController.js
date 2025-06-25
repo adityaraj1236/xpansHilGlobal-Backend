@@ -5,14 +5,14 @@ const jwt = require("jsonwebtoken");
 // Register a new user
 exports.register = async (req, res) => {
   try {
-    let { name, email, password, role } = req.body;
+    let { name, email, password, role , organization } = req.body;
 
     // Convert role to lowercase and remove spaces
     role = role?.toLowerCase().replace(/\s+/g, "");
 
 
     //restricting elf registraion to only admin and vendor 
-const publicRoles = ["vendor" , "admin"];
+const publicRoles = ["vendor" , "admin" , "hr"];
 if (!publicRoles.includes(role)) {
   return res.status(403).json({ 
     error: `You cannot register as a '${role}' via UI. Please contact your organization admin.` 
@@ -29,7 +29,7 @@ if (!publicRoles.includes(role)) {
     const hashedPassword = await bcrypt.hash(password, 10);
 
     // Create new user with hashed password
-    const user = await User.create({ name, email, password: hashedPassword, role });
+    const user = await User.create({ name, email, password: hashedPassword, role  , organization});
 
     // Generate JWT Token
     const token = jwt.sign({ id: user._id, role: user.role }, process.env.JWT_SECRET, {
@@ -50,58 +50,68 @@ if (!publicRoles.includes(role)) {
 // Login user
 exports.login = async (req, res) => {
   try {
-    let { email, password , role } = req.body;
+    let { email, password, role } = req.body;
 
-    // Check if user exists
+    // 🔍 DEBUG: Log raw input
+    console.log("🔐 Login Debug:");
+    console.log("Email submitted:", email);
+    console.log("Password submitted:", password);
+    console.log("Role submitted:", role);
+
+    // 🧠 Step 1: Check if user exists
     const user = await User.findOne({ email }).populate("organization");
 
     if (!user) {
-      console.log("❌ User not found:", email);
+      console.log("❌ No user found with email:", email);
       return res.status(401).json({ error: "Invalid credentials ❌" });
     }
 
-    // Convert role to lowercase and remove spaces for consistency
-    role = role?.toLowerCase().replace(/\s+/g, ""); 
+    // 🧠 Step 2: Normalize and validate role
+    role = role?.toLowerCase().replace(/\s+/g, "");
+    console.log("✅ DB Role:", user.role);
+    console.log("✅ Submitted Role:", role);
 
-    // Validate role
     if (user.role !== role) {
       console.log(`❌ Role mismatch: Expected ${user.role}, Received ${role}`);
       return res.status(403).json({ error: `Access denied ❌. You are not a ${role}.` });
     }
 
-    // Check if password matches
+    // 🧠 Step 3: Validate password
     const isMatch = await bcrypt.compare(password, user.password);
+    console.log("✅ Password match result:", isMatch);
+
     if (!isMatch) {
       console.log("❌ Password mismatch for user:", email);
       return res.status(401).json({ error: "Invalid credentials ❌" });
     }
 
-    // Generate JWT Token
+    // ✅ Step 4: Generate JWT Token
     if (!process.env.JWT_SECRET) {
       throw new Error("Missing JWT_SECRET in environment variables");
     }
+
     const token = jwt.sign(
       {
         id: user._id,
         name: user.name,
         role: user.role,
-        organization: user.organization?._id?.toString(), // 💡 safest way
+        organization: user.organization?._id?.toString(),
       },
       process.env.JWT_SECRET,
       { expiresIn: "1d" }
     );
-    // const token = jwt.sign({ id: user._id, role: user.role }, process.env.JWT_SECRET, { expiresIn: "1d" });
 
-    res.json({ 
-      message: `User logged in as ${role} successfully ✅`, 
-      token, 
-      user 
+    res.json({
+      message: `User logged in as ${role} successfully ✅`,
+      token,
+      user,
     });
   } catch (error) {
     console.error("Login Error:", error);
     res.status(500).json({ error: "Login failed. Try again later." });
   }
 };
+
 
 // Logout user (Invalidate token)
 exports.logout = async (req, res) => {

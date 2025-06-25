@@ -1,4 +1,4 @@
-const Attendance = require('../models/Attendance');
+const Attendance = require('../models/AttendanceTrackingSystem/Attendance');
 const Worker = require('../models/Worker');
 const mongoose = require('mongoose');
 
