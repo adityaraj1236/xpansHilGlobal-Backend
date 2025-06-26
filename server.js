@@ -36,11 +36,16 @@ app.use('/uploads', express.static(path.join(__dirname, 'uploads')));
 // Setup Socket.io
 const io = new Server(server, {
   cors: {
-    origin: ["https://infraindia-1.onrender.com", "http://localhost:5173"],
+    origin: [
+      "https://infraindia-1.onrender.com",
+      "http://localhost:5173",
+      "https://xpanshil-global.vercel.app"  // ✅ ADD THIS TOO
+    ],
     methods: ["GET", "POST", "PUT", "DELETE"],
     credentials: true
   }
 });
+
 
 // Attach io to request object
 app.use((req, res, next) => {
@@ -51,10 +56,15 @@ app.use((req, res, next) => {
 // Middlewares
 app.use(express.json({ limit: "10kb" }));
 app.use(cors({
-  origin: ["https://infraindia-1.onrender.com", "http://localhost:5173"],
+  origin: [
+    "https://infraindia-1.onrender.com",   // keep if still relevant
+    "http://localhost:5173",               // for local dev
+    "https://xpanshil-global.vercel.app"   // ✅ ADD THIS
+  ],
   methods: ["GET", "POST", "PUT", "DELETE"],
   credentials: true
 }));
+
 app.use(helmet());
 app.use(mongoSanitize());
 app.use(xss());
