@@ -66,7 +66,9 @@ app.use(cors({
     "https://xpans-hil-global.vercel.app" ,
     "https://xpans-hil-global-git-main-adityaraj1236s-projects.vercel.app",
     "https://xpans-hil-global-j2n0u0lka-adityaraj1236s-projects.vercel.app", 
-    "https://www.xpanshilglobal.com" // ✅ ADD THIS
+    "https://www.xpanshilglobal.com",
+    "https://xpanshilglobal.com" // ✅ ADD THIS,
+
   ],
   methods: ["GET", "POST", "PUT", "DELETE"],
   credentials: true
