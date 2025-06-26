@@ -1,51 +1,88 @@
 const User = require("../models/User");
 const bcrypt = require("bcrypt");
 const jwt = require("jsonwebtoken");
+const Organization = require("../models/Organization");
 
 // Register a new user
 exports.register = async (req, res) => {
   try {
-    let { name, email, password, role , organization } = req.body;
+    const {
+      name,
+      email,
+      password,
+      role,
+      organizationName,
+      description,
+      address
+    } = req.body;
 
-    // Convert role to lowercase and remove spaces
-    role = role?.toLowerCase().replace(/\s+/g, "");
+    // Lowercase and sanitize role
+    const normalizedRole = role?.toLowerCase().trim();
 
+    // Allow only admin to register directly
+    if (normalizedRole !== "admin") {
+      return res.status(403).json({
+        error: "Only admins can self-register. Other roles must be added by HR."
+      });
+    }
 
-    //restricting elf registraion to only admin and vendor 
-const publicRoles = ["vendor" , "admin" , "hr"];
-if (!publicRoles.includes(role)) {
-  return res.status(403).json({ 
-    error: `You cannot register as a '${role}' via UI. Please contact your organization admin.` 
-  });
-}
-
-    // Check if the email is already registered
+    // Check if email already in use
     const existingUser = await User.findOne({ email });
     if (existingUser) {
       return res.status(400).json({ error: "Email already in use" });
     }
 
-    // 🔹 Hash the password before saving
+    // Check if org already exists
+    const existingOrg = await Organization.findOne({ name: organizationName });
+    if (existingOrg) {
+      return res.status(400).json({ error: "Organization with this name already exists" });
+    }
+
     const hashedPassword = await bcrypt.hash(password, 10);
 
-    // Create new user with hashed password
-    const user = await User.create({ name, email, password: hashedPassword, role  , organization});
+    // STEP 1: Create admin user (without org yet)
+    const user = await User.create({
+      name,
+      email,
+      password: hashedPassword,
+      role: normalizedRole,
+    });
 
-    // Generate JWT Token
+    // STEP 2: Create organization with admin = user._id
+    const organization = await Organization.create({
+      name: organizationName,
+      description,
+      admin: user._id,
+      address: {
+        ...address,
+        updatedAt: new Date()
+      },
+      projects: []
+    });
+
+    // STEP 3: Assign organization to admin user
+    user.organization = organization._id;
+    await user.save();
+
+    // Token generation
     const token = jwt.sign({ id: user._id, role: user.role }, process.env.JWT_SECRET, {
-      expiresIn: "7d",
+      expiresIn: "7d"
     });
 
-    res.status(201).json({ 
-      message: "User registered successfully ✅", 
-      token, 
-      user 
+    res.status(201).json({
+      message: "Admin registered and organization created successfully",
+      token,
+      user
     });
+
   } catch (error) {
     console.error("Registration Error:", error);
     res.status(500).json({ error: "Registration failed. Try again later." });
   }
 };
+
+
+
 
 // Login user
 exports.login = async (req, res) => {
