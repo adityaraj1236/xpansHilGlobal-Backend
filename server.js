@@ -42,7 +42,9 @@ const io = new Server(server, {
       // "https://xpanshil-global.vercel.app", 
       "https://xpans-hil-global.vercel.app/",
       "https://xpans-hil-global-git-main-adityaraj1236s-projects.vercel.app",
-      "https://xpans-hil-global-j2n0u0lka-adityaraj1236s-projects.vercel.app"
+      "https://xpans-hil-global-j2n0u0lka-adityaraj1236s-projects.vercel.app",
+      "https://www.xpanshilglobal.com",
+      "https://xpanshilglobal.com" // ✅ ADD THIS,
         // ✅ ADD THIS TOO
     ],
     methods: ["GET", "POST", "PUT", "DELETE"],
@@ -59,6 +61,7 @@ app.use((req, res, next) => {
 
 // Middlewares
 app.use(express.json({ limit: "10kb" }));
+// app.use(cors(corsOptions)); // before routes
 app.use(cors({
   origin: [
     "https://infraindia-1.onrender.com",   // keep if still relevant
