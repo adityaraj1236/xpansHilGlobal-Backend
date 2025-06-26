@@ -39,7 +39,11 @@ const io = new Server(server, {
     origin: [
       "https://infraindia-1.onrender.com",
       "http://localhost:5173",
-      "https://xpanshil-global.vercel.app"  // ✅ ADD THIS TOO
+      // "https://xpanshil-global.vercel.app", 
+      "https://xpans-hil-global.vercel.app/",
+      "https://xpans-hil-global-git-main-adityaraj1236s-projects.vercel.app",
+      "https://xpans-hil-global-j2n0u0lka-adityaraj1236s-projects.vercel.app"
+        // ✅ ADD THIS TOO
     ],
     methods: ["GET", "POST", "PUT", "DELETE"],
     credentials: true
@@ -59,7 +63,9 @@ app.use(cors({
   origin: [
     "https://infraindia-1.onrender.com",   // keep if still relevant
     "http://localhost:5173",               // for local dev
-    "https://xpanshil-global.vercel.app"   // ✅ ADD THIS
+    "https://xpans-hil-global.vercel.app" ,
+    "https://xpans-hil-global-git-main-adityaraj1236s-projects.vercel.app",
+    "https://xpans-hil-global-j2n0u0lka-adityaraj1236s-projects.vercel.app"  // ✅ ADD THIS
   ],
   methods: ["GET", "POST", "PUT", "DELETE"],
   credentials: true
