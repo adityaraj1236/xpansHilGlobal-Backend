@@ -77,6 +77,16 @@ const ProjectSchema = new mongoose.Schema({
     }
   ],
 
+
+  //Addition of team memebers 
+  teamMembers: [
+  {
+    name: String,
+    email: String,
+    role: String // e.g., "Foreman", "Senior Site Engineer", etc.
+  }
+],
+
   // Site Supervisor (Only One)
   siteSupervisor: {
     type: new mongoose.Schema({
@@ -85,6 +95,16 @@ const ProjectSchema = new mongoose.Schema({
       status: { type: String, enum: ["Pending", "Accepted", "Rejected"], default: "Pending" }
     })
   },
+
+
+ storeKeeper: {
+  type: new mongoose.Schema({
+    email: { type: String, required: true },
+    name: { type: String, required: true },
+    status: { type: String, enum: ["Pending", "Accepted", "Rejected"], default: "Pending" }
+  })
+}
+,
   // siteSupervisor: { type: mongoose.Schema.Types.ObjectId, ref: "User" }, // Reference to User model
 
   // BOQ (List of materials, labor, and costs)

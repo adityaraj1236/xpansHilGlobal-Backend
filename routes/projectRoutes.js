@@ -10,7 +10,11 @@ const {
   generateProgressReport,
   getMyOrganizationProjects, 
   getProjectDetails,
-  getProjectsByLoggedInUserOrg
+  getProjectsByLoggedInUserOrg,
+  updateProjectManager,
+  updateSiteSupervisor,
+  updateStoreKeeper,
+  addTeamMember
 } = require("../controllers/projectController");
 const Project = require("../models/Project");
 const User  =  require("../models/User")
@@ -40,10 +44,29 @@ router.get(
 );
 
   
-router.post("/:projectId/assign-project-manager", authenticateUser, authorizeRoles("admin"), assignProjectManager);
+router.post("/:projectId/assign-project-manager", authenticateUser, authorizeRoles("admin"), updateProjectManager);
+
+//update store keepers 
+router.post(
+  "/:projectId/add-storekeeper",
+  authenticateUser,
+  authorizeRoles("admin"), // only admin can assign
+  updateStoreKeeper
+);
+
+
+//update team members 
+router.post(
+  "/:projectId/add-team-member",
+  authenticateUser,
+  authorizeRoles("admin", "projectmanager"), // both can add team members
+  addTeamMember
+);
+
+
 
 // ✅ Only admin can assign Supervisors
-router.post("/:projectId/assign-supervisor", authenticateUser, authorizeRoles("admin"), assignSupervisor);
+router.post("/:projectId/assign-supervisor", authenticateUser, authorizeRoles("admin" , "projectmanager"), updateSiteSupervisor);
 
 // ❌ Anyone can accept or reject projects (No Role Restriction)
 router.post("/accept", authenticateUser, acceptProject);

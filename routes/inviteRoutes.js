@@ -34,7 +34,7 @@ router.post('/projects/:projectId/invite-manager', async (req, res) => {
     const token = crypto.randomBytes(32).toString('hex');
     
     // Adjust the baseActionLink if not using HTTPS on localhost
-    const baseActionLink = `http://localhost:5173/invite/handle?token=${token}`;
+    const baseActionLink = `https://www.xpanshilglobal.com/invite/handle?token=${token}`;
     
     // Create the invite entry
     const invite = new Invite({
@@ -92,7 +92,7 @@ router.post('/projects/:projectId/invite-supervisor', async (req, res) => {
     const token = crypto.randomBytes(32).toString('hex');
     
     // Adjust the baseActionLink if not using HTTPS on localhost
-    const baseActionLink = `http://localhost:5173/invite/handle?token=${token}`;
+    const baseActionLink = `https://www.xpanshilglobal.com/invite/handle?token=${token}`;
     
     // Create the invite entry
     const invite = new Invite({
@@ -171,7 +171,7 @@ router.post('/respond', async (req, res) => {
           <p>Your account has been created as <strong>${roleTitle}</strong>.</p>
           <p>Login Email: ${user.email}</p>
           <p>Temporary Password: <strong>${tempPassword}</strong></p>
-          <p>Login here: <a href="http://localhost:5173/login">Login</a></p>
+          <p>Login here: <a href="https://www.xpanshilglobal.com/login">Login</a></p>
         `;
         
         await sendEmail(user.email, `Your ${roleTitle} Account`, loginInfo);

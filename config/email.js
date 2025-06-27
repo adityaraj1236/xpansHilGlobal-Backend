@@ -1,6 +1,8 @@
 const nodemailer = require("nodemailer");
-require('dotenv').config();
+require("dotenv").config();
 
+console.log("Email:", process.env.EMAIL_USER);
+console.log("Pass:", process.env.EMAIL_PASS);
 
 const transporter = nodemailer.createTransport({
   host: "smtp.gmail.com",
@@ -21,12 +23,10 @@ const sendEmail = async (to, subject, content, actionLink) => {
         </div>
         <div style="padding: 20px; background-color: white; border-radius: 0 0 8px 8px;">
           <p style="font-size: 16px; color: #333; line-height: 1.5;">${content}</p>
-
           <div style="text-align: center; margin-top: 20px;">
             <a href="${actionLink}&status=Accepted" style="background-color: green; color: white; padding: 10px 15px; text-decoration: none; border-radius: 5px;">✅ Accept</a>
             <a href="${actionLink}&status=Rejected" style="background-color: red; color: white; padding: 10px 15px; text-decoration: none; border-radius: 5px; margin-left: 10px;">❌ Reject</a>
           </div>
-
           <hr style="margin: 20px 0; border: 0; border-top: 1px solid #ddd;">
           <p style="text-align: center; font-size: 14px; color: #555;">
             🚀 <strong>Thank you!</strong><br>
@@ -36,14 +36,21 @@ const sendEmail = async (to, subject, content, actionLink) => {
       </div>
     `;
 
-    await transporter.sendMail({
+    const info = await transporter.sendMail({
       from: `"Project Management" <${process.env.EMAIL_USER}>`,
       to,
       subject,
+      text: content, // fallback text
       html: htmlTemplate,
     });
 
-    console.log("📩 Email sent successfully to", to);
+    // 🔍 Log full response info
+    console.log("✅ Email sent");
+    console.log("📧 Message ID:", info.messageId);
+    console.log("✅ Accepted:", info.accepted);
+    console.log("❌ Rejected:", info.rejected);
+    console.log("🔗 Preview URL (dev only):", nodemailer.getTestMessageUrl?.(info));
+
   } catch (error) {
     console.error("❌ Email sending failed", error);
   }

@@ -168,50 +168,55 @@ exports.assignSupervisor = async (req, res) => {
   }
 };
 
-exports.updateSiteSupervisor =  async ( req, res) => {
-  const {name ,  email} =  req.body ; 
-   const { projectId } =  req.params ;
-   try  {
-    const project = await Projct.findById(projectId) ; 
-    if(!project) return res.status(404).json({
-      message:"Project not Found"
+exports.updateSiteSupervisor = async (req, res) => {
+  const { name, email, organizationId } = req.body;
+  const { projectId } = req.params;
+
+  try {
+    const project = await Project.findById(projectId);
+    if (!project) return res.status(404).json({ message: "Project not found" });
+
+    // (Optional) Check organization match
+    if (project.organization.toString() !== organizationId) {
+      return res.status(400).json({ error: "Project does not belong to the specified organization" });
+    }
+
+    // Generate token & store invite
+    const token = crypto.randomBytes(32).toString("hex");
+    await Invite.create({
+      role: "sitesupervisor",
+      email,
+      projectId,
+      status: "Pending",
+      token,
+      expiresAt: new Date(Date.now() + 24 * 60 * 60 * 1000),
     });
-    //save invite logic to DB
-    const token = crypto.randomBytes(32).toString('hex');
-    const invite = await Invite.create({
-      role:"sitesupervisor" , 
-      status:"Pending" , 
-      token:token,
-      expiresAt: new Date(Date.now()  +  24*60*60*1000),
-    })
 
-    //send email from utility
-
-
-    //udate project wiht endig project manager info 
-    project.supervisor =  {
-      name,  
-      email , 
-      status: 'Pending' , 
+    // Update project supervisor info
+    project.supervisor = {
+      name,
+      email,
+      status: "Pending",
     };
     await project.save();
 
-     // Send email with tokens
-     const subject = "You're invited as Site Supervisor ";
-     const baseActionLink = `http://localhost:5173/invite/handle?token=${token}`;
-     const content = `
-       You’ve been invited to join as a <strong>Site Supervisor</strong> for the project <b>${project.name}</b>.<br/>
-       Click the link below to accept or reject the invitation.
-     `;
- 
-     await sendEmail(email, subject, content, baseActionLink);
-    res.status(200).json({message:  "invie sent to new Site Supervisor"});
-  }
-  catch(err){
+    // Send invitation email
+    const subject = "You're invited as Site Supervisor";
+    const baseActionLink = `https://www.xpanshilglobal.com//invite/handle?token=${token}`;
+    const content = `
+      You’ve been invited to join as a <strong>Site Supervisor</strong> for the project <b>${project.name}</b>.<br/>
+      Click the link below to accept or reject the invitation.
+    `;
+
+    await sendEmail(email, subject, content, baseActionLink);
+
+    res.status(200).json({ message: "Invite sent to new Site Supervisor" });
+  } catch (err) {
     console.error("Supervisor update failed:", err);
-    res.status(500).json({ error: 'Internal server error' });
+    res.status(500).json({ error: "Internal server error" });
   }
-   };
+};
+
 
 
 // 🚀 Assign Project Manager
@@ -228,18 +233,96 @@ exports.assignProjectManager = async (req, res) => {
       return res.status(400).json({ error: "Project does not belong to the specified organization" });
     }
 
+    // Assign project manager
     project.projectManager = { email, name, status: "Pending" };
     await project.save();
 
-    // Send an email to the new Project Manager
-    sendEmail(email, "Project Manager Assignment", 
-      `You have been assigned as the Project Manager for project: ${project.name}. Please accept or reject.`);
+    // ✅ Send an email with accept/reject link
+    const actionLink = `https://www.xpanshilglobal.com//project/${projectId}?email=${email}`;
+    await sendEmail(
+      email,
+      "Project Manager Assignment",
+      `You have been assigned as the Project Manager for project: ${project.name}. Please accept or reject your role.`,
+      actionLink
+    );
 
     res.json({ message: "Project Manager assigned successfully", project });
   } catch (error) {
+    console.error("❌ Error assigning Project Manager:", error);
     res.status(500).json({ error: "Error assigning Project Manager" });
   }
 };
+
+// Addition fo store keepers 
+exports.updateStoreKeeper = async (req, res) => {
+  const { name, email, organizationId } = req.body;
+  const { projectId } = req.params;
+
+  try {
+    const project = await Project.findById(projectId);
+    if (!project) return res.status(404).json({ message: "Project not found" });
+
+    // (Optional) Validate org
+    if (project.organization.toString() !== organizationId) {
+      return res.status(400).json({ error: "Project does not belong to this organization" });
+    }
+
+    const token = crypto.randomBytes(32).toString("hex");
+
+    await Invite.create({
+      role: "storekeeper",
+      email,
+      projectId,
+      status: "Pending",
+      token,
+      expiresAt: new Date(Date.now() + 24 * 60 * 60 * 1000),
+    });
+
+    project.storeKeeper = { name, email, status: "Pending" };
+    await project.save();
+
+    const subject = "You're invited as Store Keeper";
+    const baseActionLink = `https://www.xpanshilglobal.com/invite/handle?token=${token}`;
+    const content = `
+      You’ve been invited to join as a <strong>Store Keeper</strong> for the project <b>${project.name}</b>.<br/>
+      Click the link below to accept or reject the invitation.
+    `;
+
+    await sendEmail(email, subject, content, baseActionLink);
+    res.status(200).json({ message: "Invite sent to Store Keeper" });
+
+  } catch (err) {
+    console.error("Store Keeper update failed:", err);
+    res.status(500).json({ error: "Internal server error" });
+  }
+};
+
+
+exports.addTeamMember = async (req, res) => {
+  const { name, email, role } = req.body;
+  const { projectId } = req.params;
+
+  try {
+    const project = await Project.findById(projectId);
+    if (!project) return res.status(404).json({ message: "Project not found" });
+
+    // Avoid duplicate team member
+    const exists = project.teamMembers.some(member => member.email === email && member.role === role);
+    if (exists) {
+      return res.status(400).json({ error: "Team member already exists" });
+    }
+
+    project.teamMembers.push({ name, email, role });
+    await project.save();
+
+    res.status(200).json({ message: "Team member added", teamMembers: project.teamMembers });
+  } catch (err) {
+    console.error("Team member add failed:", err);
+    res.status(500).json({ error: "Internal server error" });
+  }
+};
+
+
 
 
 exports.updateBoqItems = async (req, res) => {
@@ -326,17 +409,23 @@ exports.getProjectDetails = async (req, res) => {
 };
 
 exports.updateProjectManager =  async ( req, res) => {
-  const {name ,  email} =  req.body ; 
+  const {name ,  email , organizationId} =  req.body ; 
    const { projectId } =  req.params ;
    try  {
-    const project = await Projct.findById(projectId) ; 
+    const project = await Project.findById(projectId) ; 
     if(!project) return res.status(404).json({
       message:"Project not Found"
     });
+    // (Optional) Check organization match
+    if (project.organization.toString() !== organizationId) {
+      return res.status(400).json({ error: "Project does not belong to the specified organization" });
+    }
     //save invite logic to DB
     const token = crypto.randomBytes(32).toString('hex');
     const invite = await Invite.create({
       role:"projectmanager" , 
+      email ,
+      projectId,
       status:"Pending" , 
       token:token,
       expiresAt: new Date(Date.now()  +  24*60*60*1000),
@@ -355,7 +444,7 @@ exports.updateProjectManager =  async ( req, res) => {
 
      // Send email with token
      const subject = "You're invited as Project Manager";
-     const baseActionLink = `http://localhost:5173/invite/handle?token=${token}`;
+     const baseActionLink = `https://www.xpanshilglobal.com/invite/handle?token=${token}`;
      const content = `
        You’ve been invited to join as a <strong>Project Manager</strong> for the project <b>${project.name}</b>.<br/>
        Click the link below to accept or reject the invitation.
