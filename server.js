@@ -78,6 +78,7 @@ app.use(cors({
 }));
 
 app.use(helmet());
+app.options('*', cors());
 app.use(mongoSanitize());
 app.use(xss());
 const limiter = rateLimit({
