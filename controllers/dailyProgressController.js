@@ -1,13 +1,14 @@
 const Task = require("../models/Task");
 const { format } = require("date-fns");
 
+
 exports.addDailyProgress = async (req, res) => {
   try {
     const { taskId } = req.params;
     const {
       boqQuantityDone,
       remarks,
-      imageUrl,
+      imageUrl, // ✅ Now expecting an array
       latitude,
       longitude
     } = req.body;
@@ -17,45 +18,54 @@ exports.addDailyProgress = async (req, res) => {
 
     const today = format(new Date(), "yyyy-MM-dd");
 
-    // Prevent multiple updates on the same day
-    const alreadyLogged = task.dailyProgress.some(log =>
+    const boqDoneToday = Number(boqQuantityDone) || 0;
+
+    // Check if today's entry exists
+    const todayLog = task.dailyProgress.find(log =>
       format(new Date(log.date), "yyyy-MM-dd") === today
     );
-    if (alreadyLogged) return res.status(400).json({ message: "Today's progress already submitted" });
 
-    // Ensure boqQuantityDone is a number
-    const boqDoneToday = Number(boqQuantityDone);
+    if (todayLog) {
+      // ✅ Append new images and update quantity/remarks
+      todayLog.imageUrl.push(...imageUrl);
+      todayLog.boqQuantityDone += boqDoneToday;
+      todayLog.remarks = remarks || todayLog.remarks;
+      todayLog.timestamp = new Date();
 
-    // Calculate total done so far
-    const totalDone = task.dailyProgress.reduce((sum, log) => sum + log.boqQuantityDone, 0) + boqDoneToday;
+      // Recalculate completion %
+      const totalDone = task.dailyProgress.reduce((sum, l) => sum + l.boqQuantityDone, 0);
+      todayLog.percentageCompleted = Math.min((totalDone / task.boqQuantityTarget) * 100, 100).toFixed(2);
 
-    // Calculate percentage
-    const percentageCompleted = Math.min((totalDone / task.boqQuantityTarget) * 100, 100).toFixed(2);
+    } else {
+      // New log for today
+      const totalDone = task.dailyProgress.reduce((sum, log) => sum + log.boqQuantityDone, 0) + boqDoneToday;
+      const percentageCompleted = Math.min((totalDone / task.boqQuantityTarget) * 100, 100).toFixed(2);
 
-    // Push new progress log
-    task.dailyProgress.push({
-      boqQuantityDone: boqDoneToday,
-      boqUnit: task.unitOfMeasure,
-      percentageCompleted: parseFloat(percentageCompleted),
-      remarks,
-      date: new Date(),
-      timestamp: new Date(),
-      imageUrl,
-      location: {
-        latitude: parseFloat(latitude),
-        longitude: parseFloat(longitude)
-      },
-      submittedBy: req.user._id
-    });
+      task.dailyProgress.push({
+        boqQuantityDone: boqDoneToday,
+        boqUnit: task.unitOfMeasure,
+        percentageCompleted: parseFloat(percentageCompleted),
+        remarks,
+        date: new Date(),
+        timestamp: new Date(),
+        imageUrl,
+        location: {
+          latitude: parseFloat(latitude),
+          longitude: parseFloat(longitude)
+        },
+        submittedBy: req.user._id
+      });
+    }
 
     await task.save();
 
-    res.status(201).json({ message: "Progress updated", progress: task.dailyProgress });
+    res.status(201).json({ message: "Progress logged", progress: task.dailyProgress });
   } catch (err) {
-    console.error(err);
+    console.error("Daily progress error:", err);
     res.status(500).json({ message: "Server error" });
   }
 };
+
 
 
 exports.getProgressForTask = async (req, res) => {

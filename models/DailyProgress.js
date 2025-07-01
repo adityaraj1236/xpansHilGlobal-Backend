@@ -29,7 +29,7 @@ const DailyProgressSchema = new mongoose.Schema({
   },
 
   imageUrl: {
-    type: String, // Cloudinary image URL
+    type: [String], // array  Cloudinary image URL
     required: true
   },
 
