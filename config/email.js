@@ -53,6 +53,7 @@ const sendEmail = async (to, subject, content, actionLink) => {
 
   } catch (error) {
     console.error("❌ Email sending failed", error);
+    throw error; // ← Add this line
   }
 };
 
