@@ -14,7 +14,7 @@ const {
 router.post(
   "/:taskId",
   authenticateUser,
-  authorizeRoles("sitesupervisor"),
+  authorizeRoles("sitesupervisor" ,  "projectmanager"),
   addDailyProgress
 );
 
