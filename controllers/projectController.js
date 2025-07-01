@@ -409,15 +409,18 @@ exports.getProjectDetails = async (req, res) => {
 };
 
 exports.updateProjectManager =  async ( req, res) => {
-  const {name ,  email , organizationId} =  req.body ; 
+  const {name ,  email} =  req.body ; 
+  const organizationId = req.user.organization._id; // ✅ use server-side auth
+  console.log('printng the organization id : ' , organizationId)
    const { projectId } =  req.params ;
    try  {
     const project = await Project.findById(projectId) ; 
+    console.log("printing all the project details " , project);
     if(!project) return res.status(404).json({
       message:"Project not Found"
     });
     // (Optional) Check organization match
-    if (project.organization.toString() !== organizationId) {
+    if (project.organization.toString() !== organizationId.toString()) {
       return res.status(400).json({ error: "Project does not belong to the specified organization" });
     }
     //save invite logic to DB

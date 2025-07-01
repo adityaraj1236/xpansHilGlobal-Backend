@@ -124,104 +124,105 @@ router.post('/projects/:projectId/invite-supervisor', async (req, res) => {
 });
 
 // Route to handle the invitation response (Accept/Reject)
+// Route to handle the invitation response (Accept/Reject)
 router.post('/respond', async (req, res) => {
   const { token, status } = req.body;
 
   try {
-    // Find the invite by token
     const invite = await Invite.findOne({ token });
 
-    // Check if invite exists and is not expired
     if (!invite || invite.expiresAt < Date.now()) {
       return res.status(400).json({ message: 'Invalid or expired invitation.' });
     }
 
-    // Handle the response based on 'status'
+    const project = await Project.findById(invite.projectId);
+    if (!project) {
+      return res.status(404).json({ message: 'Project not found for invitation.' });
+    }
+
     if (status === 'Accepted') {
       invite.status = 'Accepted';
-      await invite.save();  // Save updated status in DB
+      await invite.save();
 
-      // Check if user already exists
-      const existingUser = await User.findOne({ email: invite.email });
-      let user;
-      
-      if (existingUser) {
-        user = existingUser;
-      } else {
-        // Generate a random password
+      let user = await User.findOne({ email: invite.email });
+
+      if (!user) {
         const tempPassword = crypto.randomBytes(8).toString('hex');
-        
-        //Hash the password
         const hashedPassword = await bcrypt.hash(tempPassword, 10);
-        
-        // Create the user with the appropriate role
+
         user = await User.create({
           name: invite.email.split('@')[0],
           email: invite.email,
           password: hashedPassword,
-          organization: invite.orgId || '67f3ee4dc60475e81662a4c4', // need to fix this as organization id should be dynamic
-          role: invite.role, // Use the role from the invitation
+          organization: project.organization,
+          role: invite.role
         });
-        
-        // Determine role title for the email
-        const roleTitle = invite.role === 'projectmanager' ? 'Project Manager' : 'Site Supervisor';
-        
-        // Send login credentials via email
+
+        const roleTitle = getRoleTitle(invite.role);
         const loginInfo = `
           <p>Your account has been created as <strong>${roleTitle}</strong>.</p>
           <p>Login Email: ${user.email}</p>
           <p>Temporary Password: <strong>${tempPassword}</strong></p>
           <p>Login here: <a href="https://www.xpanshilglobal.com/login">Login</a></p>
         `;
-        
+
         await sendEmail(user.email, `Your ${roleTitle} Account`, loginInfo);
-      }
-      
-      // Update the project with this user based on their role
-      if (invite.projectId) {
-        try {
-          const project = await Project.findById(invite.projectId);
-          
-          if (project) {
-            if (invite.role === 'projectmanager') {
-              // Update the project manager details
-              project.projectManager = {
-                email: user.email,
-                name: user.name || user.email.split('@')[0], // Use part of email as name if not available
-                status: 'Accepted'
-              };
-            } else if (invite.role === 'sitesupervisor') {
-              // Update the site supervisor
-              project.siteSupervisor = {
-                email: user.email,
-                name: user.name || user.email.split('@')[0],
-                status: 'Accepted'
-              };
-            }
-            
-            await project.save();
-            console.log(`Project ${project._id} updated with ${invite.role}: ${user.email}`);
-          }
-        } catch (error) {
-          console.error(`Error updating project with ${invite.role}:`, error);
-          // Continue with response even if project update fails
+      } else {
+        // Existing user: optionally update role if different
+        if (user.role !== invite.role) {
+          user.role = invite.role;
+          await user.save();
         }
+
+        const notifyMsg = `
+          <p>You have been assigned as <strong>${getRoleTitle(invite.role)}</strong> for the project <b>${project.name}</b>.</p>
+          <p><a href="https://www.xpanshilglobal.com/login">Click here to login</a></p>
+        `;
+        await sendEmail(user.email, `${getRoleTitle(invite.role)} Invitation Accepted`, notifyMsg);
       }
 
-      return res.json({ 
-        message: `Invitation accepted. Account created and project updated with ${invite.role}.` 
+      // ✅ Update the project based on the role
+      const projectUserData = {
+        email: user.email,
+        name: user.name || user.email.split('@')[0],
+        status: 'Accepted'
+      };
+
+      if (invite.role === 'projectmanager') {
+        project.projectManager = projectUserData;
+      } else if (invite.role === 'sitesupervisor') {
+        project.siteSupervisor = projectUserData;
+      } else if (invite.role === 'billingengineer') {
+        project.billingEngineer = projectUserData;
+      }
+
+      await project.save();
+
+      return res.json({
+        message: `Invitation accepted. ${getRoleTitle(invite.role)} assigned to project.`,
+        user
       });
     }
 
-    invite.status = 'Rejected'; // If status is 'Rejected', set the status
-    await invite.save();  // Save updated status in DB
+    // If Rejected
+    invite.status = 'Rejected';
+    await invite.save();
+    return res.json({ message: 'Invitation rejected.' });
 
-    res.json({ message: 'Invitation rejected.' }); // Send rejection response
   } catch (error) {
     console.error('Error handling invitation response:', error);
     res.status(500).json({ message: 'Error handling invitation response', error: error.message });
   }
 });
+
+// Helper function to return proper role title
+function getRoleTitle(role) {
+  if (role === 'projectmanager') return 'Project Manager';
+  if (role === 'sitesupervisor') return 'Site Supervisor';
+  if (role === 'billingengineer') return 'Billing Engineer';
+  return 'Team Member';
+}
+
 
 // Route to update user roles in a project
 router.put('/projects/:projectId/users/:userId/role', async (req, res) => {

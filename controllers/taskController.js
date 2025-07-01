@@ -41,11 +41,12 @@ exports.createTask = async (req, res) => {
 
 
     // Validate required fields
-    if (!title || !assignedTo || !projectId || !durationInDays || !expectedCost || !unitOfMeasure || !boqQuantityTarget) {
-      return res.status(400).json({
-        error: "Missing required fields: title, assignedTo, projectId, durationInDays, expectedCost, unitOfMeasure ,  boqQuantityTarget"
-      });
-    }
+  if (!title || !projectId || !durationInDays || !expectedCost || !unitOfMeasure || !boqQuantityTarget) {
+  return res.status(400).json({
+    error: "Missing required fields: title, projectId, durationInDays, expectedCost, unitOfMeasure, boqQuantityTarget"
+  });
+}
+
 
     // Only admin or project manager can assign tasks
     if (!["admin", "projectmanager"].includes(currentUser.role)) {
@@ -64,10 +65,13 @@ exports.createTask = async (req, res) => {
     ].filter(Boolean); // remove undefined/null if any
 
     // ✅ Validate assignedTo users
-    const invalidUsers = assignedTo.filter(id => !validUserIds.includes(id.toString()));
-    if (invalidUsers.length > 0) {
-      return res.status(400).json({ error: "Some users are not assigned to this project", invalidUsers });
-    }
+   if (assignedTo && assignedTo.length > 0) {
+  const invalidUsers = assignedTo.filter(id => !validUserIds.includes(id.toString()));
+  if (invalidUsers.length > 0) {
+    return res.status(400).json({ error: "Some users are not assigned to this project", invalidUsers });
+  }
+}
+
 
     // Calculate dates
     const startDate = new Date();
@@ -78,7 +82,7 @@ exports.createTask = async (req, res) => {
     const task = await Task.create({
   title,
   description: description || "",
-  assignedTo,
+  assignedTo: assignedTo || [],
   status: status || "Not Started",
   startDate,
   expectedEndDate,

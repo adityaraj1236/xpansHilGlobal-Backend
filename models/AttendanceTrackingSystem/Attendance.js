@@ -1,9 +1,9 @@
 const mongoose = require('mongoose');
 
 const attendanceSchema = new mongoose.Schema({
-  worker: {
+  employeeId: {
     type: mongoose.Schema.Types.ObjectId,
-    ref: 'Worker',
+    ref: 'Employee',
     required: true
   },
   project: {
@@ -13,23 +13,49 @@ const attendanceSchema = new mongoose.Schema({
   },
   date: {
     type: Date,
-    required: true
+    required: true,
+    default: () => {
+      const d = new Date();
+      d.setHours(0, 0, 0, 0);
+      return d;
+    }
   },
   status: {
     type: String,
     enum: ['Present', 'Absent', 'Half-day', 'On-leave'],
     required: true
   },
-  checkInTime: {
-    type: Date
+  checkInTime: Date,
+  checkOutTime: Date,
+
+  method: {
+    type: String,
+    enum: ['QR', 'manual'],
+    default: 'QR'
   },
-  checkOutTime: {
-    type: Date
+
+  location: {
+    type: {
+      type: String,
+      enum: ['Point'],
+      default: 'Point'
+    },
+    coordinates: {
+      type: [Number], // [longitude, latitude]
+      default: [0, 0]
+    }
   },
+
   remarks: {
     type: String,
     trim: true
   },
+
+  isPaid: {
+    type: Boolean,
+    default: false
+  },
+
   markedBy: {
     type: mongoose.Schema.Types.ObjectId,
     ref: 'User',
@@ -39,9 +65,10 @@ const attendanceSchema = new mongoose.Schema({
   timestamps: true
 });
 
-// Compound index to ensure unique attendance records per worker per date
-attendanceSchema.index({ worker: 1, date: 1 }, { unique: true });
+// 🔐 Prevent duplicate entries
+attendanceSchema.index({ employeeId: 1, date: 1 }, { unique: true });
 
-const Attendance = mongoose.model('Attendance', attendanceSchema);
+// 🌍 Enable geo location queries
+attendanceSchema.index({ location: "2dsphere" });
 
-module.exports = Attendance;
+module.exports = mongoose.model('Attendance', attendanceSchema);

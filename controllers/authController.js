@@ -12,65 +12,92 @@ exports.register = async (req, res) => {
       password,
       role,
       organizationName,
+      organization, // <--- allow org ID for project managers
       description,
       address
     } = req.body;
 
-    // Lowercase and sanitize role
     const normalizedRole = role?.toLowerCase().trim();
 
-    // Allow only admin to register directly
-    if (normalizedRole !== "admin") {
+    // Allow only admin or project manager
+    if (!["admin", "projectmanager"].includes(normalizedRole)) {
       return res.status(403).json({
-        error: "Only admins can self-register. Other roles must be added by HR."
+        error: "Only admins and project managers can self-register. Other roles must be added by HR."
       });
     }
 
-    // Check if email already in use
+    // Check if email already exists
     const existingUser = await User.findOne({ email });
     if (existingUser) {
       return res.status(400).json({ error: "Email already in use" });
     }
 
-    // Check if org already exists
-    const existingOrg = await Organization.findOne({ name: organizationName });
-    if (existingOrg) {
-      return res.status(400).json({ error: "Organization with this name already exists" });
-    }
-
     const hashedPassword = await bcrypt.hash(password, 10);
 
-    // STEP 1: Create admin user (without org yet)
-    const user = await User.create({
-      name,
-      email,
-      password: hashedPassword,
-      role: normalizedRole,
-    });
+    let user, org;
 
-    // STEP 2: Create organization with admin = user._id
-    const organization = await Organization.create({
-      name: organizationName,
-      description,
-      admin: user._id,
-      address: {
-        ...address,
-        updatedAt: new Date()
-      },
-      projects: []
-    });
+    // Admin logic: create user + new organization
+    if (normalizedRole === "admin") {
+      const existingOrg = await Organization.findOne({ name: organizationName });
+      if (existingOrg) {
+        return res.status(400).json({ error: "Organization with this name already exists" });
+      }
 
-    // STEP 3: Assign organization to admin user
-    user.organization = organization._id;
-    await user.save();
+      user = await User.create({
+        name,
+        email,
+        password: hashedPassword,
+        role: normalizedRole,
+      });
+
+      org = await Organization.create({
+        name: organizationName,
+        description,
+        admin: user._id,
+        address: {
+          ...address,
+          updatedAt: new Date()
+        },
+        projects: []
+      });
+
+      user.organization = org._id;
+      await user.save();
+    }
+
+    // Project manager logic: register to existing org
+    if (normalizedRole === "projectmanager") {
+      // Either org name or org ID must be provided
+      if (!organization && !organizationName) {
+        return res.status(400).json({ error: "Organization ID or name is required." });
+      }
+
+      org = organization
+        ? await Organization.findById(organization)
+        : await Organization.findOne({ name: organizationName });
+
+      if (!org) {
+        return res.status(404).json({ error: "Organization not found. Ask admin to add you." });
+      }
+
+      user = await User.create({
+        name,
+        email,
+        password: hashedPassword,
+        role: normalizedRole,
+        organization: org._id
+      });
+    }
 
     // Token generation
-    const token = jwt.sign({ id: user._id, role: user.role }, process.env.JWT_SECRET, {
-      expiresIn: "7d"
-    });
+    const token = jwt.sign(
+      { id: user._id, role: user.role, organization: user.organization },
+      process.env.JWT_SECRET,
+      { expiresIn: "7d" }
+    );
 
     res.status(201).json({
-      message: "Admin registered and organization created successfully",
+      message: `${normalizedRole.charAt(0).toUpperCase() + normalizedRole.slice(1)} registered successfully`,
       token,
       user
     });
@@ -80,6 +107,7 @@ exports.register = async (req, res) => {
     res.status(500).json({ error: "Registration failed. Try again later." });
   }
 };
+
 
 
 

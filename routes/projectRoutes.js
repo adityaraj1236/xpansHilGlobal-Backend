@@ -180,5 +180,45 @@ router.post("/fix-user-org", async (req, res) => {
 });
 
 
+// Invite Billing Engineer to a Project
+router.post("/:projectId/invite-billing-engineer", authenticateUser, authorizeRoles("admin"), async (req, res) => {
+  const { email } = req.body;
+  const { projectId } = req.params;
+  const role = 'billingengineer';
+
+  try {
+    const project = await Project.findById(projectId);
+    if (!project) return res.status(404).json({ message: "Project not found" });
+
+    const token = crypto.randomBytes(32).toString("hex");
+    const orgId = project.organization;
+    const baseActionLink = `https://www.xpanshilglobal.com/invite/handle?token=${token}`;
+
+    // Save invite
+    await Invite.create({
+      email,
+      orgId,
+      projectId,
+      role,
+      token,
+      expiresAt: new Date(Date.now() + 24 * 60 * 60 * 1000),
+    });
+
+    const subject = "Billing Engineer Invitation";
+    const content = `
+      You've been invited to join as a <strong>Billing Engineer</strong> for the project <b>${project.name}</b>.
+      Click the button below to accept or reject the invitation.
+    `;
+
+    await sendEmail(email, subject, content, baseActionLink);
+
+    res.status(200).json({ message: "✅ Billing Engineer invitation sent!" });
+  } catch (error) {
+    console.error("❌ Error inviting billing engineer:", error);
+    res.status(500).json({ message: "Error sending invitation", error: error.message });
+  }
+});
+
+
 
 module.exports = router;

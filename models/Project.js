@@ -72,7 +72,7 @@ const ProjectSchema = new mongoose.Schema({
   assignedUsers: [
     {
       email: { type: String, required: true },
-      role: { type: String, enum: ["Engineer", "Worker", "Architect", "Contractor"]},
+      role: { type: String, enum: ["Engineer", "Worker", "Architect", "Contractor",  "billingengineer"]},
       status: { type: String, enum: ["Pending", "Accepted", "Rejected"], default: "Pending" }
     }
   ],
@@ -105,6 +105,16 @@ const ProjectSchema = new mongoose.Schema({
   })
 }
 ,
+
+billingEngineer: {
+  name: String,
+  email: String,
+  status: {
+    type: String,
+    enum: ['Pending', 'Accepted', 'Rejected'],
+    default: 'Pending'
+  }
+},
   // siteSupervisor: { type: mongoose.Schema.Types.ObjectId, ref: "User" }, // Reference to User model
 
   // BOQ (List of materials, labor, and costs)

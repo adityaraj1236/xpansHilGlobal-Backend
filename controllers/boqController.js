@@ -3,6 +3,10 @@ const BOQ = require("../models/BOQ/BOQ");
 const BOQItem = require("../models/BOQ/BOQItem");
 const BOQSection = require("../models/BOQ/BOQSection");
 const BOQSubTask = require("../models/BOQ/BOQSubTask");
+const { streamUpload } = require("../utils/cloudinary");
+const axios = require("axios");
+const Formidable = require("formidable"); // To parse form-data (npm install formidable)
+const Project = require("../models/Project");
 
 exports.createBOQ = async (req, res) => {
   try {
@@ -19,7 +23,11 @@ exports.createBOQ = async (req, res) => {
     });
 
     await boq.save();
-    res.status(201).json({ message: "BOQ created", boq });
+
+    // 🔗 Update the project to link this BOQ
+    await Project.findByIdAndUpdate(projectId, { boq: boq._id });
+
+    res.status(201).json({ message: "BOQ created and linked to project", boq });
 
   } catch (err) {
     console.error("Error creating BOQ:", err);
@@ -82,3 +90,61 @@ exports.getBOQByProject = async (req, res) => {
     res.status(500).json({ message: "Server Error" });
   }
 };
+
+
+
+
+//with the help of nano nets 
+const sendToNanonets = async (url) => {
+  const response = await axios.post(
+    `https://app.nanonets.com/api/v2/OCR/Model/016deecd-2f00-44d5-b0f8-01e656b5360f/LabelUrls/?async=false`,
+    new URLSearchParams({ urls: url }),
+    {
+      headers: {
+        Authorization:
+          "Basic " +
+          Buffer.from("40bc3ff1-5390-11f0-80d2-36802fcbbb71" + ":").toString("base64"),
+        "Content-Type": "application/x-www-form-urlencoded",
+      },
+    }
+  );
+
+  return response.data;
+};
+
+// 📦 Route Handler
+exports.uploadBOQAndParse = async (req, res) => {
+  try {
+    console.log("📥 File received in backend:", req.file?.originalname);
+
+    const cloudRes = await streamUpload(req.file.buffer, "boq_files");
+    console.log("☁️ Cloudinary upload done:", cloudRes.secure_url);
+
+    const url = cloudRes.secure_url;
+    console.log("📨 Sending to Nanonets with URL:", url);
+
+    const nanoRes = await axios.post(
+      "https://app.nanonets.com/api/v2/OCR/Model/016deecd-2f00-44d5-b0f8-01e656b5360f/LabelUrls/?async=false",
+      new URLSearchParams({ urls: url }),
+      {
+        headers: {
+          Authorization: "Basic " + Buffer.from("40bc3ff1-5390-11f0-80d2-36802fcbbb71" + ":").toString("base64"),
+          "Content-Type": "application/x-www-form-urlencoded",
+        },
+      }
+    );
+
+    console.log("🧠 Nanonet Response:", nanoRes.data);
+    return res.json({ json: nanoRes.data });
+  } catch (err) {
+    console.error("❌ BOQ Upload error:", err?.response?.data || err.message);
+    return res.status(500).json({
+      error: "Upload failed",
+      details: err?.response?.data || err.message,
+    });
+  }
+};
+
+
+
+
