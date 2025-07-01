@@ -72,7 +72,7 @@ const ProjectSchema = new mongoose.Schema({
   assignedUsers: [
     {
       email: { type: String, required: true },
-      role: { type: String, enum: ["Engineer", "Worker", "Architect", "Contractor",  "billingengineer"]},
+      role: { type: String, enum: ["engineer", "worker", "architect", "contractor", "billingengineer"]},
       status: { type: String, enum: ["Pending", "Accepted", "Rejected"], default: "Pending" }
     }
   ],
